@@ -1,23 +1,20 @@
 module Gvty.Graphics ( onDisplay ) where
 
+import Control.Lens
 import Control.Monad
 import Data.IORef
 import Graphics.UI.GLUT
 
-import Gvty.State
+import Gvty.World
 
-onDisplay :: IORef State -> DisplayCallback
-onDisplay state = do
+onDisplay :: IORef World -> DisplayCallback
+onDisplay world = do
     clear [ ColorBuffer, DepthBuffer ]
     loadIdentity
-    --(x, y) <- get position
-    s <- get state
-    --translate $ Vector3 x y 0
-    --rotate a $ Vector3 0 0.1 1
-    --scale 0.7 0.7 (0.7 :: GLfloat)
-    forM_ (statePoints s) $ \p ->
+    s <- get world
+    forM_ (s^.worldObjects) $ \o ->
         preservingMatrix $ do
-            let (x, y) = objPosition p
+            let (x, y) = o^.objPosition
             color $ Color3 0.5 0.5 (0.5 :: GLfloat)
             translate $ Vector3 x y (0 :: GLfloat)
             cube 0.05
@@ -27,10 +24,6 @@ onDisplay state = do
 
 vertex3f :: (GLfloat, GLfloat, GLfloat) -> IO ()
 vertex3f (x, y, z) = vertex $ Vertex3 x y z
-
-points ::Int -> [(GLfloat, GLfloat, GLfloat)]
-points n = [(sin (2 * pi * k / n'), cos (2 * pi * k / n'), 0) | k <- [1..n']]
-    where n' = fromIntegral n
 
 cube :: GLfloat -> IO ()
 cube w = do

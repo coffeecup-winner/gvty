@@ -1,21 +1,22 @@
+import Control.Lens
 import Data.IORef
 import Graphics.UI.GLUT
 
 import Gvty.Bindings
-import Gvty.State
+import Gvty.World
 
 main :: IO ()
 main = do
     (name, args) <- getArgsAndInitialize
-    state <- newIORef newState
-    s <- get state
-    let size = stateWindowSize s
+    world <- newIORef newWorld
+    s <- get world
+    let size = s^.worldWindowSize
     initialWindowSize $= (\(w, h) -> Size w h) size
     initialDisplayMode $= [ DoubleBuffered ]
     window <- createWindow "gvty"
-    reshapeCallback $= Just (onReshape state)
+    reshapeCallback $= Just (onReshape world)
     depthFunc $= Just Less
-    displayCallback $= onDisplay state
-    idleCallback $= Just (onIdle state)
-    keyboardMouseCallback $= Just (onInput state)
+    displayCallback $= onDisplay world
+    idleCallback $= Just (onIdle world)
+    keyboardMouseCallback $= Just (onInput world)
     mainLoop
