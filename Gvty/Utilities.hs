@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Gvty.Utilities ( tmap
                       , Vector
                       , fromPoints

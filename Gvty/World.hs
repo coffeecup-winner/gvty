@@ -60,7 +60,7 @@ fire x y = do
     w <- get
     let (Just coords) = w^.worldNewObjectCoords
         velocity = 0.01 *> fromPoints coords (fromMousePosition x y w)
-    worldObjects .= (Obj coords velocity) : w^.worldObjects
+    worldObjects .= Obj coords velocity : w^.worldObjects
     worldNewObjectCoords .= Nothing
 
 move :: Int -> State World ()
@@ -80,7 +80,7 @@ g = 6.67384e-11
 
 getGravity :: Obj -> Planet -> Vector
 getGravity obj planet = force *> unitVector
-    where force = g * (planet^.planetMass) / (distance (obj^.objPosition) (planet^.planetPosition))^2
+    where force = g * (planet^.planetMass) / distance (obj^.objPosition) (planet^.planetPosition) ^ 2
           unitVector = normalize $ fromPoints (obj^.objPosition) (planet^.planetPosition)
 
 fromMousePosition :: Integral a => a -> a -> World -> (Float, Float)

@@ -34,8 +34,7 @@ vector2 :: GLfloat -> GLfloat -> Vector3 GLfloat
 vector2 x y = Vector3 x y (0 :: GLfloat)
 
 circle :: GLfloat -> IO ()
-circle r = do
-    renderPrimitive TriangleFan $ mapM_ vertex3f (points r 32)
+circle r = renderPrimitive TriangleFan $ mapM_ vertex3f (points r 32)
 
 points :: GLfloat -> Int -> [(GLfloat, GLfloat, GLfloat)]
 points r n = [(r * sin (2 * pi * k / n'), r * cos (2 * pi * k / n'), 0) | k <- [1..n']]
