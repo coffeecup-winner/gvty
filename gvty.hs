@@ -10,8 +10,8 @@ main = do
     (name, args) <- getArgsAndInitialize
     world <- newIORef newWorld
     s <- get world
-    let size = s^.worldWindowSize
-    initialWindowSize $= (\(w, h) -> Size w h) size
+    let (w, h) = over both fromIntegral $ s^.worldWindowSize
+    initialWindowSize $= Size w h
     initialDisplayMode $= [ DoubleBuffered ]
     window <- createWindow "gvty"
     reshapeCallback $= Just (onReshape world)

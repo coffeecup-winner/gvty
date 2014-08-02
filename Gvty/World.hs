@@ -1,33 +1,42 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Gvty.World ( World()
-                  , worldTime
+module Gvty.World ( Obj()
+                  , objPosition
+                  , objVelocity
+                  , Planet()
+                  , planetPosition
+                  , planetRadius
+                  , World()
                   , worldWindowSize
                   , worldObjects
+                  , worldPlanets
                   , worldNewObjectCoords
                   , newWorld
                   , add
                   , fire
                   , move
-                  , Obj()
-                  , objPosition
-                  , objVelocity
                   ) where
 
 import Control.Lens
 import Control.Monad.State (State, get)
-import Graphics.UI.GLUT hiding (get)
 
 import Gvty.Utilities
 
-data Obj = Obj { _objPosition :: (GLfloat, GLfloat)
-               , _objVelocity :: (GLfloat, GLfloat)
+data Obj = Obj { _objPosition :: (Float, Float)
+               , _objVelocity :: Vector
                }
 makeLenses ''Obj
 
+data Planet = Planet { _planetPosition :: (Float, Float)
+                     , _planetMass :: Float
+                     , _planetRadius :: Float
+                     }
+makeLenses ''Planet
+
 data World = World { _worldTime :: Int
-                   , _worldWindowSize :: (GLint, GLint)
+                   , _worldWindowSize :: (Int, Int)
                    , _worldObjects :: [Obj]
-                   , _worldNewObjectCoords :: Maybe (GLfloat, GLfloat)
+                   , _worldPlanets :: [Planet]
+                   , _worldNewObjectCoords :: Maybe (Float, Float)
                    }
 makeLenses ''World
 
@@ -37,19 +46,20 @@ newWorld :: World
 newWorld = World { _worldTime = 0
                  , _worldWindowSize = (800, 800)
                  , _worldObjects = []
+                 , _worldPlanets = [Planet (0, 0) 100000 0.2]
                  , _worldNewObjectCoords = Nothing
                  }
 
-add :: GLint -> GLint -> State World ()
+add :: Integral a => a -> a -> State World ()
 add x y = do
     w <- get
-    worldNewObjectCoords .= (Just $ toFloat x y w)
+    worldNewObjectCoords .= (Just $ fromMousePosition x y w)
 
-fire :: GLint -> GLint -> State World ()
+fire :: Integral a => a -> a -> State World ()
 fire x y = do
     w <- get
     let (Just coords) = w^.worldNewObjectCoords
-        velocity = tmap (\dest src -> (dest - src) / 100) coords $ toFloat x y w
+        velocity = 0.01 *> fromPoints coords (fromMousePosition x y w)
     worldObjects .= (Obj coords velocity) : w^.worldObjects
     worldNewObjectCoords .= Nothing
 
@@ -57,14 +67,23 @@ move :: Int -> State World ()
 move time = do
     w <- get
     let dt = fromIntegral $ time - w^.worldTime
-        moveObj obj = let (dx, dy) = obj^.objVelocity
-                      in  objPosition %~ (\(x, y) -> (x + dx * dt, y + dy * dt)) $ obj
     worldTime .= time
-    worldObjects.mapped %= moveObj
+    zoom (worldObjects.traversed) $ do
+        o <- get
+        let gravityVector = foldr1 (<+>) $ map (getGravity o) $ w^.worldPlanets
+        objVelocity %= (<+> gravityVector)
+        objPosition %= offset (dt *> (o^.objVelocity))
 
 -- private
 
-toFloat :: GLint -> GLint -> World -> (GLfloat, GLfloat)
-toFloat x y world = (normalizeDim x w, - (normalizeDim y h))
+g = 6.67384e-11
+
+getGravity :: Obj -> Planet -> Vector
+getGravity obj planet = force *> unitVector
+    where force = g * (planet^.planetMass) / (distance (obj^.objPosition) (planet^.planetPosition))^2
+          unitVector = normalize $ fromPoints (obj^.objPosition) (planet^.planetPosition)
+
+fromMousePosition :: Integral a => a -> a -> World -> (Float, Float)
+fromMousePosition x y world = (normalizeDim x w, - (normalizeDim y h))
     where (w, h) = world^.worldWindowSize
           normalizeDim a b = (fromIntegral a / fromIntegral b) * 2 - 1

@@ -15,7 +15,7 @@ import Gvty.World
 onReshape :: IORef World -> ReshapeCallback
 onReshape world (Size width height) = do
     viewport $= (Position 0 0, Size x x)
-    world $~! (worldWindowSize .~ (x, x))
+    world $~! (worldWindowSize .~ (fromIntegral x, fromIntegral x))
         where x = if width < height then width else height
 
 onInput :: IORef World -> KeyboardMouseCallback
@@ -31,4 +31,3 @@ onIdle world = do
     time <- get elapsedTime
     world $~! execState (move time)
     postRedisplay Nothing
-
