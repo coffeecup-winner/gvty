@@ -25,6 +25,13 @@ onDisplay world = do
             color $ Color3 0.7 0.7 (0.7 :: GLfloat)
             translate $ vector2 x y
             circle $ realToFrac r
+    forM_ (s^.worldAnomalies) $ \a ->
+        preservingMatrix $ do
+            let (x, y) = over both realToFrac $ a^.anomalyPosition
+                r = a^.anomalyRadius
+            color $ Color3 0.2 0.2 (0.2 :: GLfloat)
+            translate $ vector2 x y
+            circle $ realToFrac r
     swapBuffers
 
 vertex3f :: (GLfloat, GLfloat, GLfloat) -> IO ()
