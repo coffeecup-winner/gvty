@@ -14,37 +14,22 @@ onDisplay world = do
     loadIdentity
     w <- get world
     when (isJust $ w^.worldNewObjectCoords) $ do
-        preservingMatrix $ do
-            let (x, y) = over both realToFrac $ fromJust (w^.worldNewObjectCoords)
-            color $ Color3 0.3 0.3 (0.3 :: GLfloat)
-            translate $ vector2 x y
-            circle 0.025
-        preservingMatrix $ do
-            let (x, y) = over both realToFrac $ fromJust (w^.worldNewObjectPreviewCoords)
-            color $ Color3 0.3 0.3 (0.3 :: GLfloat)
-            translate $ vector2 x y
-            circle 0.01
+        drawCircle (fromJust $ w^.worldNewObjectCoords) 0.025 (0.3, 0.3, 0.3)
+        drawCircle (fromJust $ w^.worldNewObjectPreviewCoords) 0.01 (0.3, 0.3, 0.3)
     forM_ (w^.worldObjects) $ \o ->
-        preservingMatrix $ do
-            let (x, y) = over both realToFrac $ o^.objPosition
-            color $ Color3 0.5 0.5 (0.5 :: GLfloat)
-            translate $ vector2 x y
-            circle 0.03
+        drawCircle (o^.objPosition) 0.03 (0.5, 0.5, 0.5)
     forM_ (w^.worldPlanets) $ \p ->
-        preservingMatrix $ do
-            let (x, y) = over both realToFrac $ p^.planetPosition
-                r = p^.planetRadius
-            color $ Color3 0.7 0.7 (0.7 :: GLfloat)
-            translate $ vector2 x y
-            circle $ realToFrac r
+        drawCircle (p^.planetPosition) (p^.planetRadius) (0.7, 0.7, 0.7)
     forM_ (w^.worldAnomalies) $ \a ->
-        preservingMatrix $ do
-            let (x, y) = over both realToFrac $ a^.anomalyPosition
-                r = a^.anomalyRadius
-            color $ Color3 0.2 0.2 (0.2 :: GLfloat)
-            translate $ vector2 x y
-            circle $ realToFrac r
+        drawCircle (a^.anomalyPosition) (a^.anomalyRadius) (0.2, 0.2, 0.2)
     swapBuffers
+
+drawCircle :: Real a => (a, a) -> a -> (a, a, a) -> IO ()
+drawCircle coords radius (r, g, b) = preservingMatrix $ do
+    let (x, y) = over both realToFrac coords
+    color $ Color3 (realToFrac r) (realToFrac g) (realToFrac b :: GLfloat)
+    translate $ vector2 x y
+    circle $ realToFrac radius
 
 vertex3f :: (GLfloat, GLfloat, GLfloat) -> IO ()
 vertex3f (x, y, z) = vertex $ Vertex3 x y z
