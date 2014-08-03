@@ -24,7 +24,7 @@ module Gvty.World ( Obj()
 
 import Control.Lens
 import Control.Monad.State (State, get)
-import Data.List (find)
+import Data.Foldable
 import Data.Maybe (fromMaybe)
 
 import Gvty.Utilities
@@ -95,8 +95,8 @@ move time = do
     w <- get
     zoom (worldObjects.traversed) $ do
         o <- get
-        let gravityVector = foldr1 (<+>) $ map (getGravity o) $ w^.worldPlanets
-        objVelocity %= (<+> gravityVector)
+        let combinedGravityVector = foldMap (getGravityVector o) $ w^.worldPlanets
+        objVelocity %= (<+> combinedGravityVector)
         let dt = getElapsedTime o w time
         objPosition %= offset (dt *> (o^.objVelocity))
     worldTime .= time
@@ -105,8 +105,8 @@ move time = do
 
 g = 6.67384e-11
 
-getGravity :: Obj -> Planet -> Vector
-getGravity obj planet = force *> unitVector
+getGravityVector :: Obj -> Planet -> Vector
+getGravityVector obj planet = force *> unitVector
     where force = g * (planet^.planetMass) / distance (obj^.objPosition) (planet^.planetPosition) ^ 2
           unitVector = normalize $ fromPoints (obj^.objPosition) (planet^.planetPosition)
 
