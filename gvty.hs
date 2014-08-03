@@ -18,5 +18,6 @@ main = do
     depthFunc $= Just Less
     displayCallback $= onDisplay world
     idleCallback $= Just (onIdle world)
+    motionCallback $= Just (onMotion world)
     keyboardMouseCallback $= Just (onInput world)
     mainLoop

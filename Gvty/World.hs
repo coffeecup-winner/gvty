@@ -14,8 +14,10 @@ module Gvty.World ( Obj()
                   , worldPlanets
                   , worldAnomalies
                   , worldNewObjectCoords
+                  , worldNewObjectPreviewCoords
                   , newWorld
                   , add
+                  , previewNewObj
                   , fire
                   , move
                   ) where
@@ -49,6 +51,7 @@ data World = World { _worldTime :: Int
                    , _worldPlanets :: [Planet]
                    , _worldAnomalies :: [Anomaly]
                    , _worldNewObjectCoords :: Maybe (Float, Float)
+                   , _worldNewObjectPreviewCoords :: Maybe (Float, Float)
                    }
 makeLenses ''World
 
@@ -58,23 +61,34 @@ newWorld :: World
 newWorld = World { _worldTime = 0
                  , _worldWindowSize = (800, 800)
                  , _worldObjects = []
-                 , _worldPlanets = [Planet (0, 0) 100000 0.2]
+                 , _worldPlanets = [ Planet (-0.2, 0.2) 100000 0.2
+                                   , Planet (0.2, -0.2) 100000 0.2
+                                   ]
                  , _worldAnomalies = [Anomaly (-0.5, -0.5) 0.4]
                  , _worldNewObjectCoords = Nothing
+                 , _worldNewObjectPreviewCoords = Nothing
                  }
 
 add :: Integral a => a -> a -> State World ()
 add x y = do
     w <- get
-    worldNewObjectCoords .= (Just $ fromMousePosition x y w)
+    let pos = Just $ fromMousePosition x y w
+    worldNewObjectCoords .= pos
+    worldNewObjectPreviewCoords .= pos
+
+previewNewObj :: Integral a => a -> a -> State World ()
+previewNewObj x y = do
+    w <- get
+    worldNewObjectPreviewCoords .= (Just $ fromMousePosition x y w)
 
 fire :: Integral a => a -> a -> State World ()
 fire x y = do
     w <- get
     let (Just coords) = w^.worldNewObjectCoords
-        velocity = 0.01 *> fromPoints coords (fromMousePosition x y w)
+        velocity = 0.005 *> fromPoints coords (fromMousePosition x y w)
     worldObjects .= Obj coords velocity : w^.worldObjects
     worldNewObjectCoords .= Nothing
+    worldNewObjectPreviewCoords .= Nothing
 
 move :: Int -> State World ()
 move time = do
@@ -98,7 +112,7 @@ getGravity obj planet = force *> unitVector
 
 getElapsedTime :: Obj -> World -> Int -> Float
 getElapsedTime obj world time = k * elapsedTime
-    where k = fromMaybe 1.0 $ find (< 1.0) distances
+    where k = maybe 1.0 (^ 2) $ find (< 1.0) distances
           distances = fmap (\a -> distance (obj^.objPosition) (a^.anomalyPosition) / (a^.anomalyRadius)) $ world^.worldAnomalies
           elapsedTime = fromIntegral $ time - world^.worldTime
 

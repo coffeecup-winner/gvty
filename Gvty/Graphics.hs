@@ -3,6 +3,7 @@ module Gvty.Graphics ( onDisplay ) where
 import Control.Lens
 import Control.Monad
 import Data.IORef
+import Data.Maybe
 import Graphics.UI.GLUT
 
 import Gvty.World
@@ -11,21 +12,32 @@ onDisplay :: IORef World -> DisplayCallback
 onDisplay world = do
     clear [ ColorBuffer, DepthBuffer ]
     loadIdentity
-    s <- get world
-    forM_ (s^.worldObjects) $ \o ->
+    w <- get world
+    when (isJust $ w^.worldNewObjectCoords) $ do
+        preservingMatrix $ do
+            let (x, y) = over both realToFrac $ fromJust (w^.worldNewObjectCoords)
+            color $ Color3 0.3 0.3 (0.3 :: GLfloat)
+            translate $ vector2 x y
+            circle 0.025
+        preservingMatrix $ do
+            let (x, y) = over both realToFrac $ fromJust (w^.worldNewObjectPreviewCoords)
+            color $ Color3 0.3 0.3 (0.3 :: GLfloat)
+            translate $ vector2 x y
+            circle 0.01
+    forM_ (w^.worldObjects) $ \o ->
         preservingMatrix $ do
             let (x, y) = over both realToFrac $ o^.objPosition
             color $ Color3 0.5 0.5 (0.5 :: GLfloat)
             translate $ vector2 x y
-            circle 0.05
-    forM_ (s^.worldPlanets) $ \p ->
+            circle 0.03
+    forM_ (w^.worldPlanets) $ \p ->
         preservingMatrix $ do
             let (x, y) = over both realToFrac $ p^.planetPosition
                 r = p^.planetRadius
             color $ Color3 0.7 0.7 (0.7 :: GLfloat)
             translate $ vector2 x y
             circle $ realToFrac r
-    forM_ (s^.worldAnomalies) $ \a ->
+    forM_ (w^.worldAnomalies) $ \a ->
         preservingMatrix $ do
             let (x, y) = over both realToFrac $ a^.anomalyPosition
                 r = a^.anomalyRadius
