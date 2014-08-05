@@ -1,5 +1,5 @@
 --{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-module Gvty.Utilities ( Vector
+module Gvty.Utilities ( Vector(..)
                       , fromPoints
                       , offset
                       , (<+>)

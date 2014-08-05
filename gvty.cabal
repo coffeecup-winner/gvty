@@ -18,7 +18,9 @@ executable gvty
   main-is:           gvty.hs
   -- ghc-options:       -optl-mwindows
   -- other-modules:
-  build-depends:     base == 4.6.*,
-                     mtl  == 2.2.*,
-                     lens == 4.3.*,
-                     GLUT == 2.4.*
+  build-depends:     base       == 4.6.*,
+                     mtl        == 2.2.*,
+                     lens       == 4.3.*,
+                     aeson      == 0.7.*,
+                     bytestring == 0.10.*,
+                     GLUT       == 2.4.*

@@ -1,14 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Gvty.World ( Obj()
+module Gvty.World ( Obj(..)
                   , objPosition
                   , objVelocity
-                  , Planet()
+                  , Planet(..)
                   , planetPosition
                   , planetRadius
-                  , Anomaly()
+                  , Anomaly(..)
                   , anomalyPosition
                   , anomalyRadius
-                  , World()
+                  , World(..)
                   , worldWindowSize
                   , worldObjects
                   , worldPlanets
@@ -16,6 +16,7 @@ module Gvty.World ( Obj()
                   , worldNewObjectCoords
                   , worldNewObjectPreviewCoords
                   , newWorld
+                  , load
                   , add
                   , previewNewObj
                   , fire
@@ -61,13 +62,16 @@ newWorld :: World
 newWorld = World { _worldTime = 0
                  , _worldWindowSize = (800, 800)
                  , _worldObjects = []
-                 , _worldPlanets = [ Planet (-0.2, 0.2) 100000 0.2
-                                   , Planet (0.2, -0.2) 100000 0.2
-                                   ]
-                 , _worldAnomalies = [Anomaly (-0.5, -0.5) 0.4]
+                 , _worldPlanets = []
+                 , _worldAnomalies = []
                  , _worldNewObjectCoords = Nothing
                  , _worldNewObjectPreviewCoords = Nothing
                  }
+
+load :: [Planet] -> [Anomaly] -> State World ()
+load planets anomalies = do
+    worldPlanets .= planets
+    worldAnomalies .= anomalies
 
 add :: Integral a => a -> a -> State World ()
 add x y = do
