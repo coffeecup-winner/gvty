@@ -9,6 +9,7 @@ module Gvty.World ( Obj(..)
                   , anomalyPosition
                   , anomalyRadius
                   , World(..)
+                  , worldTime
                   , worldWindowSize
                   , worldObjects
                   , worldPlanets
