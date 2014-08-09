@@ -19,6 +19,7 @@ executable gvty
   -- ghc-options:       -optl-mwindows
   -- other-modules:
   build-depends:     base       == 4.6.*,
+                     containers == 0.5.*,
                      mtl        == 2.2.*,
                      lens       == 4.3.*,
                      aeson      == 0.7.*,

@@ -7,33 +7,35 @@ import Data.IORef
 import Data.Maybe
 import Graphics.UI.GLUT
 
+import Gvty.GraphicsCache
 import Gvty.World
 
-onDisplay :: IORef World -> DisplayCallback
-onDisplay world = do
+onDisplay :: IORef World -> IORef GraphicsCache -> DisplayCallback
+onDisplay world cache = do
     clear [ ColorBuffer, DepthBuffer ]
     loadIdentity
     w <- get world
     when (isJust $ w^.worldNewObjectCoords) $ do
-        draw sphere (fromJust $ w^.worldNewObjectCoords) 0.025 (0.3, 0.3, 0.3) (return ())
-        draw sphere (fromJust $ w^.worldNewObjectPreviewCoords) 0.01 (0.3, 0.3, 0.3) (return ())
+        draw sphere cache (fromJust $ w^.worldNewObjectCoords) 0.025 (0.3, 0.3, 0.3) (return ())
+        draw sphere cache (fromJust $ w^.worldNewObjectPreviewCoords) 0.01 (0.3, 0.3, 0.3) (return ())
     forM_ (w^.worldObjects) $ \o ->
-        draw sphere (o^.objPosition) 0.03 (0.5, 0.5, 0.5) (return ())
+        draw sphere cache (o^.objPosition) 0.03 (0.5, 0.5, 0.5) (return ())
     forM_ (w^.worldPlanets) $ \p ->
-        draw sphere (p^.planetPosition) (p^.planetRadius) (0.7, 0.7, 0.7) $
+        draw sphere cache (p^.planetPosition) (p^.planetRadius) (0.7, 0.7, 0.7) $
             rotate ((0.1 *) . fromIntegral $ w^.worldTime) $ Vector3 0.5 0.5 (0.5 :: GLfloat)
     forM_ (w^.worldAnomalies) $ \a ->
-        draw circle (a^.anomalyPosition) (a^.anomalyRadius) (0.2, 0.2, 0.2) (return ())
+        draw circle cache (a^.anomalyPosition) (a^.anomalyRadius) (0.2, 0.2, 0.2) (return ())
     swapBuffers
 
-draw :: Real a => IO () -> (a, a) -> a -> (a, a, a) -> IO() -> IO ()
-draw obj coords radius (r, g, b) action = preservingMatrix $ do
+draw :: Real a => (IORef GraphicsCache -> IO ()) -> IORef GraphicsCache -> (a, a) -> a -> (a, a, a) -> IO() -> IO ()
+draw obj cache coords radius (r, g, b) action = preservingMatrix $ do
     let (x, y) = over both realToFrac coords
-    color $ Color3 (realToFrac r) (realToFrac g) (realToFrac b :: GLfloat)
-    translate $ vector2 x y
-    scale (realToFrac radius) (realToFrac radius) (realToFrac radius :: GLfloat)
-    action
-    obj
+    when (x > -2 && x < 2 && y > -2 && y < 2) $ do
+        color $ Color3 (realToFrac r) (realToFrac g) (realToFrac b :: GLfloat)
+        translate $ vector2 x y
+        scale (realToFrac radius) (realToFrac radius) (realToFrac radius :: GLfloat)
+        action
+        obj cache
 
 vertex3f :: (GLfloat, GLfloat, GLfloat) -> IO ()
 vertex3f (x, y, z) = vertex $ Vertex3 x y z
@@ -41,15 +43,16 @@ vertex3f (x, y, z) = vertex $ Vertex3 x y z
 vector2 :: GLfloat -> GLfloat -> Vector3 GLfloat
 vector2 x y = Vector3 x y (0 :: GLfloat)
 
-circle :: IO ()
-circle = renderPrimitive TriangleFan $ mapM_ vertex3f (circlePoints 32)
+circle :: IORef GraphicsCache -> IO ()
+circle _ = renderPrimitive TriangleFan $ mapM_ vertex3f (circlePoints 32)
 
 circlePoints :: Int -> [(GLfloat, GLfloat, GLfloat)]
 circlePoints n = [(sin (2 * pi * k / n'), cos (2 * pi * k / n'), 0) | k <- [1..n']]
     where n' = fromIntegral n
 
-sphere :: IO ()
-sphere = renderPrimitive TriangleStrip $ mapM_ vertex3f (spherePoints 32 0.2 3)
+sphere :: IORef GraphicsCache -> IO ()
+sphere cache = renderPrimitive TriangleStrip $
+    mapM_ vertex3f =<< memoized cache spheresCache (\(n, m, k) -> spherePoints n m k) (32, 0.2, 3)
 
 spherePoints :: Int -> GLfloat -> GLfloat -> [(GLfloat, GLfloat, GLfloat)]
 spherePoints n m k = getPoints heightToX ++ getPoints heightToY ++ getPoints heightToZ

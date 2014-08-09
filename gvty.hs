@@ -10,6 +10,7 @@ import Graphics.UI.GLUT
 import Prelude hiding (mapM_)
 
 import Gvty.Bindings
+import Gvty.GraphicsCache
 import Gvty.Serialization
 import Gvty.World
 
@@ -18,6 +19,7 @@ main = do
     (name, args) <- getArgsAndInitialize
     let filename = listToMaybe args
     world <- newIORef newWorld
+    graphicsCache <- newIORef newGraphicsCache
     forM_ filename $ \file -> do
         json <- L.readFile $ fromJust filename
         let w = decode json :: Maybe World
@@ -29,7 +31,7 @@ main = do
     window <- createWindow "gvty"
     reshapeCallback $= Just (onReshape world)
     depthFunc $= Just Less
-    displayCallback $= onDisplay world
+    displayCallback $= onDisplay world graphicsCache
     idleCallback $= Just (onIdle world)
     motionCallback $= Just (onMotion world)
     keyboardMouseCallback $= Just (onInput world)
