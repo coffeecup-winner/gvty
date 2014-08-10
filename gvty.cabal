@@ -18,10 +18,13 @@ executable gvty
   main-is:           gvty.hs
   -- ghc-options:       -optl-mwindows
   -- other-modules:
-  build-depends:     base       == 4.6.*,
-                     containers == 0.5.*,
-                     mtl        == 2.2.*,
-                     lens       == 4.3.*,
-                     aeson      == 0.7.*,
-                     bytestring == 0.10.*,
-                     GLUT       == 2.4.*
+  build-depends:     base        == 4.7.*,
+                     containers  == 0.5.*,
+                     mtl         == 2.2.*,
+                     lens        == 4.3.*,
+                     aeson       == 0.7.*,
+                     vector      == 0.10.*,
+                     bytestring  == 0.10.*,
+                     vect        == 0.4.*,
+                     vect-opengl == 0.4.*,
+                     GLUT        == 2.5.*

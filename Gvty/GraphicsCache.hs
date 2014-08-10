@@ -10,9 +10,10 @@ import Control.Lens
 import Data.IORef
 import qualified Data.Map as M
 import Data.Maybe
+import Data.Vect.Float
 import Graphics.UI.GLUT
 
-data GraphicsCache = GraphicsCache { _spheresCache :: M.Map (Int, GLfloat, GLfloat) [(GLfloat, GLfloat, GLfloat)]
+data GraphicsCache = GraphicsCache { _spheresCache :: M.Map (Int, Float, Float) [Vec3]
                                    }
 makeLenses ''GraphicsCache
 

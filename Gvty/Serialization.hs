@@ -4,12 +4,16 @@ module Gvty.Serialization where
 import Control.Applicative
 import Control.Monad.State
 import Data.Aeson
+import Data.Aeson.Types (Parser)
+import Data.Vect.Float
+import Data.Vector as V
 
-import Gvty.Utilities
 import Gvty.World
 
-instance FromJSON Vector where
-    parseJSON (Object x) = Vector <$> x .: "coords"
+instance FromJSON Vec2 where
+    parseJSON (Array x) = do
+        [a, b] <- toList <$> V.mapM (parseJSON :: Value -> Parser Float) x
+        return $ mkVec2 (a, b)
 
 instance FromJSON Obj where
     parseJSON (Object x) = Obj <$> x .: "position"

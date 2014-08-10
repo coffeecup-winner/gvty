@@ -6,6 +6,8 @@ import Data.Bits ((.&.))
 import Data.IORef
 import Data.Maybe
 import Graphics.UI.GLUT
+import Data.Vect.Float as V
+import Data.Vect.Float.OpenGL
 
 import Gvty.GraphicsCache
 import Gvty.World
@@ -27,87 +29,78 @@ onDisplay world cache = do
         draw circle cache (a^.anomalyPosition) (a^.anomalyRadius) (0.2, 0.2, 0.2) (return ())
     swapBuffers
 
-draw :: Real a => (IORef GraphicsCache -> IO ()) -> IORef GraphicsCache -> (a, a) -> a -> (a, a, a) -> IO() -> IO ()
-draw obj cache coords radius (r, g, b) action = preservingMatrix $ do
-    let (x, y) = over both realToFrac coords
-    when (x > -2 && x < 2 && y > -2 && y < 2) $ do
+draw :: Real a => (IORef GraphicsCache -> IO ()) -> IORef GraphicsCache -> Vec2 -> a -> (a, a, a) -> IO() -> IO ()
+draw obj cache coords radius (r, g, b) action = preservingMatrix $
+    when (len coords < 2) $ do
         color $ Color3 (realToFrac r) (realToFrac g) (realToFrac b :: GLfloat)
-        translate $ vector2 x y
+        glTranslate $ extendZero coords
         scale (realToFrac radius) (realToFrac radius) (realToFrac radius :: GLfloat)
         action
         obj cache
 
-vertex3f :: (GLfloat, GLfloat, GLfloat) -> IO ()
-vertex3f (x, y, z) = vertex $ Vertex3 x y z
-
-vector2 :: GLfloat -> GLfloat -> Vector3 GLfloat
-vector2 x y = Vector3 x y (0 :: GLfloat)
-
 circle :: IORef GraphicsCache -> IO ()
-circle _ = renderPrimitive TriangleFan $ mapM_ vertex3f (circlePoints 32)
+circle _ = renderPrimitive TriangleFan $ mapM_ vertex (circlePoints 32)
 
-circlePoints :: Int -> [(GLfloat, GLfloat, GLfloat)]
-circlePoints n = [(sin (2 * pi * k / n'), cos (2 * pi * k / n'), 0) | k <- [1..n']]
+circlePoints :: Int -> [Vec3]
+circlePoints n = [Vec3 (sin $ 2 * pi * k / n') (cos $ 2 * pi * k / n') 0 | k <- [1..n']]
     where n' = fromIntegral n
 
 sphere :: IORef GraphicsCache -> IO ()
 sphere cache = renderPrimitive TriangleStrip $
-    mapM_ vertex3f =<< memoized cache spheresCache (\(n, m, k) -> spherePoints n m k) (32, 0.2, 3)
+    mapM_ vertex =<< memoized cache spheresCache (\(n, m, k) -> spherePoints n m k) (32, 0.2, 3)
 
-spherePoints :: Int -> GLfloat -> GLfloat -> [(GLfloat, GLfloat, GLfloat)]
+spherePoints :: Int -> Float -> Float -> [Vec3]
 spherePoints n m k = getPoints heightToX ++ getPoints heightToY ++ getPoints heightToZ
-                   where getPoints setHeight = map (setHeight . toSphere) $ cubePoints n getHeight
-                         getHeight s t h = h + m * noise (s * k) (t * k)
+    where getPoints setHeight = map (setHeight . toSphere . modifyHeight) $ cubePoints n
+          modifyHeight v@(Vec3 s t _) = v &+ Vec3 0 0 (getNoise s t)
+          getNoise s t = m * noise (k *& Vec2 s t)
+          heightToX (Vec3 x y z) = Vec3 z y x
+          heightToY (Vec3 x y z) = Vec3 x z y
+          heightToZ (Vec3 x y z) = Vec3 x y z
 
-heightToX (x, y, z) = (z, y, x)
-heightToY (x, y, z) = (x, z, y)
-heightToZ (x, y, z) = (x, y, z)
-
-toSphere :: (GLfloat, GLfloat, GLfloat) -> (GLfloat, GLfloat, GLfloat)
-toSphere (s, t, h) = (x, y, z)
+toSphere :: Vec3 -> Vec3
+toSphere (Vec3 s t h) = mkVec3 (x, y, z)
     where x = h * (s / w)
           y = h * (t / w)
           z = h * (1 / w)
           w = sqrt $ s ^ 2 + t ^ 2 + 1
 
-cubePoints :: Int -> (GLfloat -> GLfloat -> GLfloat -> GLfloat) -> [(GLfloat, GLfloat, GLfloat)]
-cubePoints n f = concatMap (\(x, y) -> getRow [x, y]) $ zip range (tail range)
-    where getRow row = [(s, t, f s t h) | s <- range, t <- row, h <- [-1, 1]]
-          range = map (/ n') [-n'..n'] :: [GLfloat]
+cubePoints :: Int -> [Vec3]
+cubePoints n = concatMap (\(x, y) -> getRow [x, y]) $ zip range (tail range)
+    where getRow row = [Vec3 s t h | s <- range, t <- row, h <- [-1, 1]]
+          range = map (/ n') [-n'..n'] :: [Float]
           n' = fromIntegral n
 
-noise :: GLfloat -> GLfloat -> GLfloat
-noise x y = nxy
-    where i = floor x :: Int
-          j = floor y :: Int
-          x' = x - fromIntegral i
-          y' = y - fromIntegral j
-          ii = i .&. 255
-          jj = j .&. 255
-          gi00 = perm!!(ii + perm!!jj) `mod` 8
-          gi01 = perm!!(ii + perm!!(jj + 1)) `mod` 8
-          gi10 = perm!!(ii + 1 + perm!!jj) `mod` 8
-          gi11 = perm!!(ii + 1 + perm!!(jj + 1)) `mod` 8
-          n00 = dot (grad2!!gi00) (x', y')
-          n01 = dot (grad2!!gi01) (x', y' - 1)
-          n10 = dot (grad2!!gi10) (x' - 1, y')
-          n11 = dot (grad2!!gi11) (x' - 1, y' - 1)
-          u = fade x'
-          v = fade y'
-          nx00 = lerp n00 n10 u
-          nx01 = lerp n01 n11 u
-          nxy = lerp nx00 nx01 v
+noise :: Vec2 -> Float
+noise vec = nxy
+    where idx@(i, j) = mapVec' floor vec
+          vec' = vec &- mkVec2 (over both fromIntegral idx)
+          (ii, jj) = over both (.&. 255) idx
+          g00 = getGrad  ii       jj
+          g10 = getGrad (ii + 1)  jj
+          g01 = getGrad  ii      (jj + 1)
+          g11 = getGrad (ii + 1) (jj + 1)
+          n00 = g00 &. (vec' &+ Vec2   0    0)
+          n10 = g10 &. (vec' &+ Vec2 (-1)   0)
+          n01 = g01 &. (vec' &+ Vec2   0  (-1))
+          n11 = g11 &. (vec' &+ Vec2 (-1) (-1))
+          n = Mat2
+                (Vec2 n00 n10)
+                (Vec2 n01 n11)
+          (u, v) = mapVec' fade vec'
+          nxy = (n *. lerpVec u) &. lerpVec v
+          getGrad i j = grad2 !! (perm !! (i + perm !! j) `mod` 8)
 
-dot :: Real a => (a, a) -> (a, a) -> a
-dot (a1, b1) (a2, b2) = a1 * a2 + b1 * b2
+mapVec' :: (Float -> a) -> Vec2 -> (a, a)
+mapVec' f (Vec2 x y) = (f x, f y)
 
-lerp :: Real a => a -> a -> a -> a
-lerp a b t = (1 - t) * a + t * b
+lerpVec :: Float -> Vec2
+lerpVec t = Vec2 (1 - t) t
 
-fade :: Num a => a -> a
+fade :: Float -> Float
 fade t = t * t * t * (t * (t * 6 - 15) + 10)
 
-grad2 = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)] :: [(GLfloat, GLfloat)]
+grad2 = map mkVec2 [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
 perm = p ++ p
 
